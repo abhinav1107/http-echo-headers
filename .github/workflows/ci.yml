@@ -1,0 +1,96 @@
+name: update-changelog-build-release
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+jobs:
+  run-workflow:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        run: echo "CURRENT_APP_VERSION=$(cat VERSION)" >> $GITHUB_ENV
+
+      - name: Auto populate release notes
+        uses: release-drafter/release-drafter@v6
+        id: release_drafter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag: v${{ env.CURRENT_APP_VERSION }}
+          version: ${{ env.CURRENT_APP_VERSION }}
+          publish: false
+
+      - name: Update Change log
+        uses: stefanzweifel/changelog-updater-action@v1
+        with:
+          latest-version: v${{ env.CURRENT_APP_VERSION }}
+          release-notes: ${{ steps.release_drafter.outputs.body }}
+
+      - name: Commit updated CHANGELOG
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: ${{ github.event.release.target_commitish }}
+          commit_message: Update CHANGELOG
+          file_pattern: CHANGELOG.md
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '~1.23.2'
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Delete draft release
+        uses: hugo19941994/delete-draft-releases@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout Again to pull new changes
+        uses: actions/checkout@v4
+
+      - name: Build multi-arch binaries
+        run: |
+          go mod tidy
+
+          # Build for Linux (x86_64)
+          OOS=linux GOARCH=amd64 go build -o http-echo-headers-linux-amd64 .
+
+          # Build for MacOS (arm64)
+          GOOS=darwin GOARCH=arm64 go build -o http-echo-headers-macos-arm64 .
+
+      - name: create Github release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.CURRENT_APP_VERSION }}
+          files: |
+            http-echo-headers-linux-amd64
+            http-echo-headers-macos-arm64
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ vars.DOCKERHUB_USERNAME }}/http-echo-headers:latest
+            ${{ vars.DOCKERHUB_USERNAME }}/http-echo-headers:v${{ env.CURRENT_APP_VERSION }}
