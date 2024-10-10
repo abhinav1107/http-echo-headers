@@ -5,6 +5,12 @@ on:
       - main
     types:
       - closed
+    paths:
+      - 'Dockerfile'
+      - 'VERSION'
+      - 'go.mod'
+      - 'main.go'
+      - 'main_test.go'
 
 jobs:
   run-workflow:
