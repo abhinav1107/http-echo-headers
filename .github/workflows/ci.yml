@@ -61,6 +61,9 @@ jobs:
       - name: Checkout Again to pull new changes
         uses: actions/checkout@v4
 
+      - name: Run Tests
+        run: go test ./...
+
       - name: Build multi-arch binaries
         run: |
           go mod tidy
