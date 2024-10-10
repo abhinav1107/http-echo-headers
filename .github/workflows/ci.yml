@@ -16,6 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '~1.23.2'
+
+      - name: Run Tests
+        run: go test ./...
+
       - name: Get version
         run: echo "CURRENT_APP_VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
@@ -42,11 +50,6 @@ jobs:
           commit_message: Update CHANGELOG
           file_pattern: CHANGELOG.md
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '~1.23.2'
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -58,11 +61,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Checkout Again to pull new changes
+      - name: Checkout Again
         uses: actions/checkout@v4
-
-      - name: Run Tests
-        run: go test ./...
 
       - name: Build multi-arch binaries
         run: |
