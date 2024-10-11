@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths:
-      - chart/**
+      - charts/http-echo-headers/**
   workflow_dispatch:
 
 jobs:
@@ -31,6 +31,6 @@ jobs:
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         with:
-          charts_dir: chart
+          charts_dir: charts
           pages_branch: gh-pages
           packages_with_index: true
